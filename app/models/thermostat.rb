@@ -1,0 +1,2 @@
+class Thermostat < ApplicationRecord
+end
