@@ -10,10 +10,21 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2019_03_22_094614) do
+ActiveRecord::Schema.define(version: 2019_03_22_101841) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
+
+  create_table "readers", force: :cascade do |t|
+    t.bigint "thermostat_id"
+    t.integer "number"
+    t.float "temperature"
+    t.float "humidity"
+    t.float "battery_charge"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["thermostat_id"], name: "index_readers_on_thermostat_id"
+  end
 
   create_table "thermostats", force: :cascade do |t|
     t.string "household_token"
