@@ -12,6 +12,9 @@ class ReadingsController < ApplicationController
   end
 
   def show
+    reader = $redis.get(params[:id]) || Reader.find_by(number: params[:id])
+    render json: { message: "Data not found for given Number" } and return if !reader
+    render json: reader
   end
 
   def stats
