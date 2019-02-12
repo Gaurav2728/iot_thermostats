@@ -3,6 +3,7 @@ Rails.application.routes.draw do
   require 'sidekiq/web'
   mount Sidekiq::Web => '/sidekiq'
 
+  root to: 'readings#index'
   get 'readings', to: 'readings#index'
   post 'readings', to: 'readings#create'
   get 'readings/:id', to: 'readings#show'
