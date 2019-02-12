@@ -2,22 +2,26 @@ class ReadingsController < ApplicationController
   before_action :fetch_thermostat, except: :index
   before_action :validate_presence, only: :create
 
+  # return all thermostat records
   def index
     @thermostat = Thermostat.all
   end
 
+  # add reading for a particular thermostat
   def create
     $redis.set(@number, params)
     ReadingWorker.perform_async(@number, @thermostat.id, @temperature, @humidity, @battery_charge)
     render json: {number: @number}
   end
 
+  # return reading data for a particular thermostat
   def show
     reader = $redis.get(params[:id]) || Reader.find_by(number: params[:id])
     render json: { message: "Data not found for given Number" } and return if !reader
     render json: reader
   end
 
+  # return array of hash with avg, min and max by temerature, humidity and battery_charge for a particular thermostat
   def stats
     db_data = data_store
     redis_data = redis_store
@@ -41,6 +45,7 @@ class ReadingsController < ApplicationController
   end
 
   private
+    # identify thermostat based on household token
     def fetch_thermostat
       token = params[:household_token]
       render json: { message: 'Please provide household token.' }, status: 401 and return if !token
@@ -48,6 +53,7 @@ class ReadingsController < ApplicationController
       render json: { message: 'Household token is invalid !' }, status: 401 and return if !@thermostat
     end
 
+    # check all reader paramaters should exists
     def validate_presence
       if %w(temperature humidity battery_charge).all? {|key| params[key].present?}
         @temperature = params[:temperature]
@@ -61,11 +67,12 @@ class ReadingsController < ApplicationController
       end
     end
 
-
+    # allow only required reader paramaters
     def permit_params
       params.permit(:temperature, :humidity, :battery_charge)
     end
 
+    # return aggregations(avg,min,max) for a particular thermostat in the Database
     def data_store
       data = []
       aggregation = @thermostat.readers.pluck('Avg(temperature)', 'Min(temperature)', 'Max(temperature)', 'Avg(humidity)', 'Min(humidity)', 'Max(humidity)', 'Avg(battery_charge)', 'Min(battery_charge)', 'Max(battery_charge)').first
@@ -77,6 +84,7 @@ class ReadingsController < ApplicationController
       return data
     end
 
+    # return aggregations(avg,min,max) for a particular thermostat in the Redis cache
     def redis_store
       redis_data = []
       cache_result = []
@@ -101,18 +109,21 @@ class ReadingsController < ApplicationController
       return cache_result
     end
 
+    # return avg by temerature, humidity and battery_charge
     def avg_data(thermostat_attr, redis_data)
       thermostat_attr.map do |type|
         redis_data.map { |x| x[type].to_f }.sum / redis_data.size
       end
     end
 
+    # return min by temerature, humidity and battery_charge
     def min_data(thermostat_attr, redis_data)
       thermostat_attr.map do |type|
         redis_data.min_by { |h| h[type].to_i }[type]
       end
     end
 
+    # return max by temerature, humidity and battery_charge
     def max_data(thermostat_attr, redis_data)
       thermostat_attr.map do |type|
         redis_data.max_by { |h| h[type].to_i }[type]
